@@ -1,0 +1,40 @@
+name: Sync from private
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-from-private
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Export private pull requests and branches
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Constraint: the garden-engine-ci environment's deployment branches must allow main, not only ci/**.
+    environment: garden-engine-ci
+    steps:
+      - name: Fetch the integration branch's sync script quietly
+        env:
+          TOKEN: ${{ secrets.GE_PUBLIC_CI_TOKEN }}
+        run: |
+          set -euo pipefail
+          export GIT_TERMINAL_PROMPT=0
+          basic=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $basic"
+          mkdir private && cd private
+          git init --quiet .
+          git remote add origin https://github.com/G-A-R-D-E-N/Garden-Engine.git
+          git fetch --quiet --no-tags --depth=1 origin refs/heads/nomad/dev >/dev/null 2>&1 || { echo "::error::cannot fetch the integration branch"; exit 1; }
+          git checkout --quiet --detach FETCH_HEAD >/dev/null 2>&1 || { echo "::error::cannot check out the integration branch"; exit 1; }
+
+      - name: Export, check and report
+        env:
+          TOKEN: ${{ secrets.GE_PUBLIC_CI_TOKEN }}
+        run: python3 -I -B private/.github/public-ci/sync-from-private.py

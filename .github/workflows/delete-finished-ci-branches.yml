@@ -1,0 +1,36 @@
+name: Delete finished CI branches
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: delete-finished-ci-branches
+  cancel-in-progress: true
+
+jobs:
+  sweep:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Delete ci branches whose runs have all finished
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d '15 minutes ago' +%FT%TZ)
+          gh api "repos/$REPO/git/matching-refs/heads/ci/" --paginate --jq '.[] | "\(.ref) \(.object.sha)"' | while read -r ref sha; do
+            pushed=$(gh api "repos/$REPO/git/commits/$sha" --jq .committer.date)
+            [[ "$pushed" < "$cutoff" ]] || continue
+            active=$(gh api "repos/$REPO/actions/runs?head_sha=$sha&per_page=100" --jq '[.workflow_runs[] | select(.status != "completed")] | length')
+            [ "$active" = 0 ] || continue
+            gh api -X DELETE "repos/$REPO/git/$ref"
+            echo "deleted $ref"
+          done
