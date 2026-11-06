@@ -18,6 +18,7 @@ jobs:
     permissions:
       actions: read
       contents: write
+      deployments: write
     steps:
       - name: Delete ci branches whose runs have all finished
         env:
@@ -33,4 +34,23 @@ jobs:
             [ "$active" = 0 ] || continue
             gh api -X DELETE "repos/$REPO/git/$ref"
             echo "deleted $ref"
+          done
+
+      - name: Delete finished deployments
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d '15 minutes ago' +%FT%TZ)
+          gh api "repos/$REPO/deployments?environment=garden-engine-ci" --paginate --jq '.[] | "\(.id) \(.created_at)"' | while read -r id created; do
+            [[ "$created" < "$cutoff" ]] || continue
+            state=$(gh api "repos/$REPO/deployments/$id/statuses?per_page=1" --jq '.[0].state // "none"')
+            case "$state" in queued|in_progress|pending|waiting) continue ;; esac
+            if gh api -X POST "repos/$REPO/deployments/$id/statuses" -f state=inactive >/dev/null && gh api -X DELETE "repos/$REPO/deployments/$id"; then
+              echo "deleted deployment $id"
+            else
+              echo "skipped deployment $id"
+            fi
           done
