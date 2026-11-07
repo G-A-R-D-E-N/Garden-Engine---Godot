@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>OpenCommonwealth.Services.Papyrus</RootNamespace>
+    <AssemblyName>OpenCw.Papyrus</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <Import Project="..\native\radicle\bin\Radicle.props" Condition="Exists('..\native\radicle\bin\Radicle.props')" />
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);RADICLE_HOST_AVAILABLE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(RadicleSourceDir)/Radicle/bindings/csharp/Radicle.Interop/Radicle.Interop.csproj" />
+  </ItemGroup>
+  <Target Name="RequireRadicle" BeforeTargets="ResolveProjectReferences" Condition="'$(RadicleSourceDir)' == ''">
+    <Error Text="Radicle is not built. Build native/radicle first so Radicle.props exists." />
+  </Target>
+  <ItemGroup>
+    <EmbeddedResource Include="../../docs/proof/papyrus-evidence-registry.json" LogicalName="OpenCw.Papyrus.EvidenceRegistry" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="OpenCw.Papyrus.Tests" />
+  </ItemGroup>
+</Project>
