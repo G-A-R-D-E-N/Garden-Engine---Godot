@@ -1,0 +1,126 @@
+name: niftool-ci
+
+on:
+  push:
+    branches: ["ci/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  XMAKE_VERSION: "3.1.1"
+  XMAKE_SOURCE_SHA256: "e67e6692bdf8fcb10cdb2cc78c0e8f0ae6c86ad3e3fc532880feca49eefb74b8"
+  XMAKE_ROOT: "y"
+
+jobs:
+  niftool:
+    name: niftool build and version handshake
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Build tools
+        run: |
+          missing=""
+          for tool in g++ make unzip git curl python3; do command -v "$tool" >/dev/null || missing="$missing $tool"; done
+          if [ -n "$missing" ]; then
+            echo "Installing:$missing"
+            sudo=$(command -v sudo || true)
+            $sudo apt-get update
+            $sudo apt-get install -y --no-install-recommends g++ make unzip git curl ca-certificates python3
+          fi
+          g++ --version | head -1
+
+      - name: Install xmake
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TOOL_CACHE/xmake-${XMAKE_VERSION}"
+          mkdir -p "$RUNNER_TOOL_CACHE"
+          (
+            flock 9
+            if [ ! -f "$dir/.installed" ]; then
+              rm -rf "$dir"
+              curl -fsSL -o "$RUNNER_TEMP/xmake.tar.gz" "https://github.com/xmake-io/xmake/releases/download/v${XMAKE_VERSION}/xmake-v${XMAKE_VERSION}.tar.gz"
+              echo "${XMAKE_SOURCE_SHA256}  $RUNNER_TEMP/xmake.tar.gz" | sha256sum -c -
+              mkdir -p "$RUNNER_TEMP/xmake-src"
+              tar -xzf "$RUNNER_TEMP/xmake.tar.gz" -C "$RUNNER_TEMP/xmake-src" --strip-components=1
+              cd "$RUNNER_TEMP/xmake-src"
+              ./configure
+              make -j4
+              make install PREFIX="$dir"
+              touch "$dir/.installed"
+            fi
+          ) 9>"$dir.lock"
+          "$dir/bin/xmake" --version
+          echo "$dir/bin" >> "$GITHUB_PATH"
+
+      - name: Build niftool
+        working-directory: opencw/tools/niftool
+        run: |
+          xmake f -p linux -m release -y
+          xmake -y
+
+      - name: Version handshake
+        run: |
+          set -euo pipefail
+          required=$(sed -n 's/.*public const int RequiredSchema = \([0-9][0-9]*\);.*/\1/p' opencw/Services/NifService.cs)
+          if [ -z "$required" ]; then
+            echo "Could not read RequiredSchema from opencw/Services/NifService.cs"
+            exit 1
+          fi
+          out=$(opencw/tools/niftool/build/linux/x86_64/release/niftool version) \
+            || { echo "niftool version exited with status $?: ${out:-}"; exit 1; }
+          python3 - "$out" "$required" <<'PY'
+          import json, sys
+          text, required = sys.argv[1], int(sys.argv[2])
+          try:
+              reply = json.loads(text)
+          except ValueError as error:
+              sys.exit(f"niftool version printed invalid JSON ({error}): {text!r}")
+          if not isinstance(reply, dict):
+              sys.exit(f"niftool version did not print a JSON object: {text!r}")
+          schema = reply.get("schemaVersion")
+          if type(schema) is not int:
+              sys.exit(f"niftool version has no integer schemaVersion: {text!r}")
+          if schema != required:
+              sys.exit(f"niftool reports schemaVersion {schema}, but NifService.RequiredSchema is {required}")
+          print(f"niftool version: schemaVersion {schema}, as NifService.RequiredSchema requires")
+          PY
+
+  report:
+    name: Report to the private commit
+    needs: [niftool]
+    if: always() && !cancelled()
+    runs-on: ubuntu-24.04
+    environment: garden-engine-ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Post the result as a commit status on the private commit
+        env:
+          GH_TOKEN: ${{ secrets.GE_PUBLIC_CI_TOKEN }}
+          NEEDS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          source=$(git log -1 --format=%B | sed -n 's/^Source-Commit: \([0-9a-f]\{40\}\)$/\1/p')
+          [ -n "$source" ] || { echo "::error::no Source-Commit trailer"; exit 1; }
+          failed=$(jq -r 'to_entries | map(select(.value.result != "success" and .value.result != "skipped") | .key) | join(", ")' <<<"$NEEDS")
+          if [ -n "$failed" ]; then state=failure; description="failed: $failed"; else state=success; description="passed"; fi
+          gh api "repos/G-A-R-D-E-N/Garden-Engine/statuses/$source" -f state="$state" \
+            -f context="public-ci/niftool-ci" -f target_url="$RUN_URL" -f description="${description:0:140}" >/dev/null
+          echo "$state posted for niftool-ci ($description)"

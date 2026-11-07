@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <Import Project="..\..\opencw\native\radicle\bin\Radicle.props" Condition="Exists('..\..\opencw\native\radicle\bin\Radicle.props')" />
+  <PropertyGroup Condition="'$(RadicleSourceDir)' != ''">
+    <DefineConstants>$(DefineConstants);RADICLE_HOST_AVAILABLE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../opencw/OpenCw.Papyrus/OpenCw.Papyrus.csproj" />
+  </ItemGroup>
+  <!-- The Host skeleton test loads the pinned native library, so it must sit next to the test
+       assembly. The file only exists after the Radicle build step in the Papyrus test workflow. -->
+  <ItemGroup Condition="Exists('..\..\opencw\native\radicle\bin')">
+    <None Include="..\..\opencw\native\radicle\bin\radicle.dll" Link="radicle.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\opencw\native\radicle\bin\radicle.dll')" />
+    <None Include="..\..\opencw\native\radicle\bin\libradicle*.so" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

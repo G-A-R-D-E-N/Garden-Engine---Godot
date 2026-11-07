@@ -1,0 +1,66 @@
+name: setup-ci
+
+on:
+  push:
+    branches: ["ci/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup-linux:
+    name: Setup script tests (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Run setup.sh regression tests
+        run: bash opencw/tests/setup/test-setup.sh
+
+  setup-windows:
+    name: Setup script tests (Windows)
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Run setup.ps1 regression tests
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File opencw/tests/setup/test-setup.ps1
+
+  report:
+    name: Report to the private commit
+    needs: [setup-linux, setup-windows]
+    if: always() && !cancelled()
+    runs-on: ubuntu-24.04
+    environment: garden-engine-ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Post the result as a commit status on the private commit
+        env:
+          GH_TOKEN: ${{ secrets.GE_PUBLIC_CI_TOKEN }}
+          NEEDS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          source=$(git log -1 --format=%B | sed -n 's/^Source-Commit: \([0-9a-f]\{40\}\)$/\1/p')
+          [ -n "$source" ] || { echo "::error::no Source-Commit trailer"; exit 1; }
+          failed=$(jq -r 'to_entries | map(select(.value.result != "success" and .value.result != "skipped") | .key) | join(", ")' <<<"$NEEDS")
+          if [ -n "$failed" ]; then state=failure; description="failed: $failed"; else state=success; description="passed"; fi
+          gh api "repos/G-A-R-D-E-N/Garden-Engine/statuses/$source" -f state="$state" \
+            -f context="public-ci/setup-ci" -f target_url="$RUN_URL" -f description="${description:0:140}" >/dev/null
+          echo "$state posted for setup-ci ($description)"
