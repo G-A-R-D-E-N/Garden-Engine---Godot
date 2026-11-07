@@ -1,0 +1,133 @@
+name: opencw-papyrus-tests
+
+on:
+  push:
+    branches: ["ci/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  papyrus:
+    name: Papyrus tests against the pinned Radicle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: garden-engine-ci
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.tool_cache }}/dotnet
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Fetch Radicle at the pinned commit
+        env:
+          RADICLE_TOKEN: ${{ secrets.GE_RADICLE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          [ -n "$RADICLE_TOKEN" ] || { echo "::error::GE_RADICLE_READ_TOKEN is not set, so the private Radicle source cannot be fetched"; exit 1; }
+          commit=$(sed -n 's/^set(RADICLE_COMMIT \([0-9a-f]\{40\}\))$/\1/p' opencw/native/radicle/CMakeLists.txt)
+          [ -n "$commit" ] || { echo "::error::no RADICLE_COMMIT in opencw/native/radicle/CMakeLists.txt"; exit 1; }
+          basic=$(printf 'x-access-token:%s' "$RADICLE_TOKEN" | base64 -w0)
+          echo "::add-mask::$basic"
+          git init --quiet radicle-src
+          git -C radicle-src remote add origin https://github.com/G-A-R-D-E-N/GardenTools.git
+          git -C radicle-src -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $basic" fetch --quiet --depth=1 origin "$commit" \
+            || { echo "::error::could not fetch Radicle $commit from G-A-R-D-E-N/GardenTools; the token cannot read it or the commit is gone"; exit 1; }
+          git -C radicle-src checkout --quiet FETCH_HEAD
+          echo "Radicle $commit"
+
+      - name: Build Radicle
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/radicle-build.log"
+          status=0
+          cmake -S opencw/native/radicle -B opencw/native/radicle/build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_FLAGS=-fno-diagnostics-show-caret -DCMAKE_CXX_FLAGS=-fno-diagnostics-show-caret \
+            "-DFETCHCONTENT_SOURCE_DIR_RADICLE=$GITHUB_WORKSPACE/radicle-src" >"$log" 2>&1 \
+            && cmake --build opencw/native/radicle/build --target radicle_c --parallel 4 >>"$log" 2>&1 \
+            || status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Radicle build failed (status $status); output withheld"
+            exit "$status"
+          fi
+
+      - name: Papyrus tests
+        env:
+          OPENCW_REPO_ROOT: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/papyrus-tests.log"
+          status=0
+          dotnet test tests/OpenCw.Papyrus.Tests -c Debug -v q --logger "trx;LogFileName=$RUNNER_TEMP/papyrus-tests.trx" >"$log" 2>&1 || status=$?
+          grep -E '^(Passed|Failed)!' "$log" | grep -v 'radicle-src' || true
+          grep -oE '<UnitTestResult [^>]*>' "$RUNNER_TEMP/papyrus-tests.trx" 2>/dev/null | grep 'outcome="Failed"' | sed -nE 's/.*testName="([A-Za-z0-9_.]+).*/\1/p' | sort -u | head -60 || true
+          python3 - "$RUNNER_TEMP/papyrus-tests.trx" <<'PY' || true
+          import sys
+          import xml.etree.ElementTree as ET
+          try:
+              root = ET.parse(sys.argv[1]).getroot()
+          except (OSError, ET.ParseError):
+              sys.exit(0)
+          shown = 0
+          for result in root.iter():
+              if not result.tag.endswith('UnitTestResult') or result.get('outcome') != 'Failed':
+                  continue
+              if shown == 20:
+                  break
+              shown += 1
+              message = ''
+              for element in result.iter():
+                  if element.tag.endswith('Message') and element.text and element.text.strip():
+                      message = ' | '.join(line.strip() for line in element.text.splitlines() if line.strip())
+                      break
+              line = f"{result.get('testName', '?')}: {message or '(no message)'}"
+              print(line.replace('radicle-src', '<radicle-src>')[:600])
+          PY
+          grep -oE 'error [A-Z]+[0-9]+' "$log" | sort | uniq -c | head -20 || true
+          exit "$status"
+
+  report:
+    name: Report to the private commit
+    needs: [papyrus]
+    if: always() && !cancelled()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: garden-engine-ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Post the result as a commit status on the private commit
+        env:
+          GH_TOKEN: ${{ secrets.GE_PUBLIC_CI_TOKEN }}
+          NEEDS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          source=$(git log -1 --format=%B | sed -n 's/^Source-Commit: \([0-9a-f]\{40\}\)$/\1/p')
+          [ -n "$source" ] || { echo "::error::no Source-Commit trailer"; exit 1; }
+          failed=$(jq -r 'to_entries | map(select(.value.result != "success" and .value.result != "skipped") | .key) | join(", ")' <<<"$NEEDS")
+          if [ -n "$failed" ]; then state=failure; description="failed: $failed"; else state=success; description="passed"; fi
+          gh api "repos/G-A-R-D-E-N/Garden-Engine/statuses/$source" -f state="$state" \
+            -f context="public-ci/opencw-papyrus-tests" -f target_url="$RUN_URL" -f description="${description:0:140}" >/dev/null
+          echo "$state posted for opencw-papyrus-tests ($description)"
