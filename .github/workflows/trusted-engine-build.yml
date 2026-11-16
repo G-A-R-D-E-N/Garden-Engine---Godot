@@ -15,7 +15,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: windows-latest
     timeout-minutes: 90
-    environment: garden-engine-full-build
+    environment: garden-engine-ci
     steps:
       - name: Set up .NET SDK
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
@@ -25,7 +25,7 @@ jobs:
       - name: Fetch reviewed sources
         shell: pwsh
         env:
-          ENGINE_TOKEN: ${{ secrets.GE_ENGINE_READ_TOKEN }}
+          ENGINE_TOKEN: ${{ secrets.GE_PUBLIC_CI_TOKEN }}
           RADICLE_TOKEN: ${{ secrets.GE_RADICLE_READ_TOKEN }}
           ENGINE_SHA: ${{ inputs.engine_sha }}
         run: |
