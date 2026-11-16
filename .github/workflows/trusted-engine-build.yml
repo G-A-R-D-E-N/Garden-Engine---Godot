@@ -1,0 +1,83 @@
+name: Trusted Garden engine build
+
+on:
+  workflow_dispatch:
+    inputs:
+      engine_sha:
+        description: Reviewed Garden-Engine PR 790 head SHA
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 90
+    environment: garden-engine-full-build
+    steps:
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Fetch reviewed sources
+        shell: pwsh
+        env:
+          ENGINE_TOKEN: ${{ secrets.GE_ENGINE_READ_TOKEN }}
+          RADICLE_TOKEN: ${{ secrets.GE_RADICLE_READ_TOKEN }}
+          ENGINE_SHA: ${{ inputs.engine_sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:ENGINE_SHA -cnotmatch '^[0-9a-f]{40}$') { throw 'Invalid engine SHA.' }
+          if (-not $env:ENGINE_TOKEN -or -not $env:RADICLE_TOKEN) { throw 'Read-only repository credentials are required.' }
+          $headers = @{ Authorization = "Bearer $env:ENGINE_TOKEN"; 'X-GitHub-Api-Version' = '2022-11-28' }
+          $pr = Invoke-RestMethod -Headers $headers -Uri 'https://api.github.com/repos/G-A-R-D-E-N/Garden-Engine/pulls/790'
+          if ($pr.head.sha -cne $env:ENGINE_SHA) { throw 'The requested SHA is not the current PR 790 head.' }
+          function Fetch-Private([string]$repository, [string]$revision, [string]$directory, [string]$token) {
+            $auth = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("x-access-token:$token"))
+            Write-Output "::add-mask::$auth"
+            $env:GIT_CONFIG_COUNT = '1'
+            $env:GIT_CONFIG_KEY_0 = 'http.https://github.com/.extraheader'
+            $env:GIT_CONFIG_VALUE_0 = "AUTHORIZATION: basic $auth"
+            try {
+              git init --quiet $directory
+              git -C $directory remote add origin "https://github.com/G-A-R-D-E-N/$repository.git"
+              git -C $directory fetch --quiet --depth=1 origin $revision 2>&1 | Out-Null
+              if ($LASTEXITCODE -ne 0) { throw 'Private source fetch failed.' }
+              git -C $directory checkout --quiet --detach FETCH_HEAD 2>&1 | Out-Null
+              if ($LASTEXITCODE -ne 0) { throw 'Private source checkout failed.' }
+              if ((git -C $directory rev-parse HEAD) -cne $revision) { throw 'Source revision mismatch.' }
+            } finally {
+              Remove-Item Env:GIT_CONFIG_COUNT, Env:GIT_CONFIG_KEY_0, Env:GIT_CONFIG_VALUE_0 -ErrorAction SilentlyContinue
+            }
+          }
+          Fetch-Private 'Garden-Engine' $env:ENGINE_SHA 'engine' $env:ENGINE_TOKEN
+          $pin = (Select-String -LiteralPath 'engine/opencw/native/radicle/CMakeLists.txt' -Pattern 'set\(RADICLE_COMMIT ([0-9a-f]{40})\)').Matches.Groups[1].Value
+          if ($pin -cnotmatch '^[0-9a-f]{40}$') { throw 'Invalid Radicle pin.' }
+          Fetch-Private 'GardenTools' $pin 'radicle-src' $env:RADICLE_TOKEN
+
+      - name: Build pinned Radicle and engine
+        shell: pwsh
+        env:
+          DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+          DOTNET_NOLOGO: '1'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $log = Join-Path $env:RUNNER_TEMP 'engine-build.log'
+          function Run-Quiet([string]$program, [string[]]$arguments) {
+            & $program @arguments *>> $log
+            if ($LASTEXITCODE -ne 0) { throw "$program failed; private build output is withheld." }
+          }
+          try {
+            Push-Location engine/opencw
+            Run-Quiet cmake @('-S', 'native/radicle', '-B', 'native/radicle/build', "-DFETCHCONTENT_SOURCE_DIR_RADICLE=$env:GITHUB_WORKSPACE/radicle-src")
+            Run-Quiet cmake @('--build', 'native/radicle/build', '--config', 'Release', '--target', 'radicle_c', '--parallel', '4')
+            Run-Quiet dotnet @('restore', 'OpenCommonwealth.csproj', '--force', '--no-cache')
+            Run-Quiet dotnet @('msbuild', 'OpenCommonwealth.csproj', '/t:Build', '/p:Restore=false', '/v:minimal')
+            Run-Quiet dotnet @('msbuild', 'OpenCommonwealth.csproj', '/t:Build', '/p:Restore=false', '/p:Configuration=ExportRelease', '/v:minimal')
+          } finally {
+            Pop-Location
+            Remove-Item -LiteralPath $log -Force -ErrorAction SilentlyContinue
+          }
