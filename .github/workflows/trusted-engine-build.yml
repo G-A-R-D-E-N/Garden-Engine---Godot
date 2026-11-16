@@ -72,11 +72,17 @@ jobs:
           }
           try {
             Push-Location engine/opencw
+            Write-Output 'Configuring Radicle'
             Run-Quiet cmake @('-S', 'native/radicle', '-B', 'native/radicle/build', "-DFETCHCONTENT_SOURCE_DIR_RADICLE=$env:GITHUB_WORKSPACE/radicle-src")
+            Write-Output 'Building Radicle'
             Run-Quiet cmake @('--build', 'native/radicle/build', '--config', 'Release', '--target', 'radicle_c', '--parallel', '4')
+            Write-Output 'Restoring engine dependencies'
             Run-Quiet dotnet @('restore', 'OpenCommonwealth.csproj', '--force', '--no-cache')
+            Write-Output 'Building engine'
             Run-Quiet dotnet @('msbuild', 'OpenCommonwealth.csproj', '/t:Build', '/p:Restore=false', '/v:minimal')
+            Write-Output 'Building engine export configuration'
             Run-Quiet dotnet @('msbuild', 'OpenCommonwealth.csproj', '/t:Build', '/p:Restore=false', '/p:Configuration=ExportRelease', '/v:minimal')
+            Write-Output 'Engine build completed'
           } finally {
             Pop-Location
             Remove-Item -LiteralPath $log -Force -ErrorAction SilentlyContinue
