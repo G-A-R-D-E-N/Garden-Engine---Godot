@@ -31,7 +31,7 @@ jobs:
           mkdir private && cd private
           git init --quiet .
           git remote add origin https://github.com/G-A-R-D-E-N/Garden-Engine.git
-          for branch in nomad/dev darkstar/dev; do
+          for branch in main nomad/dev darkstar/dev; do
             git fetch --quiet --no-tags --depth=1 origin "refs/heads/$branch" >/dev/null 2>&1 || continue
             git cat-file -e FETCH_HEAD:.github/public-ci/sync-from-private.py 2>/dev/null || continue
             git cat-file -e FETCH_HEAD:.github/public-ci/export-public-ci.py 2>/dev/null || continue
@@ -39,8 +39,17 @@ jobs:
             echo "Using the sync script from $branch"
             exit 0
           done
-          echo "::error::neither nomad/dev nor darkstar/dev can be read with the sync script"
+          echo "::error::none of main, nomad/dev or darkstar/dev can be read with the sync script"
           exit 1
+
+      # Constraint: the sync test step runs only when the fetched checkout carries test_sync_from_private.py.
+      - name: Test the sync script before it runs
+        run: |
+          if [ -f private/.github/public-ci/test_sync_from_private.py ]; then
+            python3 -I -B private/.github/public-ci/test_sync_from_private.py
+          else
+            echo "::warning::the fetched checkout has no sync test, so sync-from-private.py runs untested this tick"
+          fi
 
       - name: Export, check and report
         env:
