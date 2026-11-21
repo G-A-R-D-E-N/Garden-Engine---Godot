@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <Import Project="..\..\opencw\native\radicle\bin\Radicle.props" Condition="Exists('..\..\opencw\native\radicle\bin\Radicle.props')" />
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../opencw/OpenCw.Papyrus/OpenCw.Papyrus.csproj" />
+    <Compile Include="../../opencw/Services/GeSaveContainer.cs" Link="Save/GeSaveContainer.cs" />
+    <Compile Include="../../opencw/Services/ConditionFunctions.cs" Link="Dialogue/ConditionFunctions.cs" />
+    <Compile Include="../../opencw/Services/Dialogue/DialogueRecords.cs" Link="Dialogue/DialogueRecords.cs" />
+    <Compile Include="../../opencw/Services/Dialogue/SessionQuestState.cs" Link="Dialogue/SessionQuestState.cs" />
+    <Compile Include="../../opencw/Services/Papyrus/Quest/QuestDefinition.cs" Link="Quest/QuestDefinition.cs" />
+    <Compile Include="../../opencw/Services/Papyrus/RadicleQuestStartup.cs" Link="Quest/RadicleQuestStartup.cs" />
+    <Compile Include="../../opencw/OpenCw.Ui/Interaction/ActivationDispatcher.cs" Link="Interaction/ActivationDispatcher.cs" />
+    <Compile Include="../../opencw/OpenCw.Ui/Interaction/ActivationBlocks.cs" Link="Interaction/ActivationBlocks.cs" />
+    <Compile Include="../../opencw/OpenCw.Ui/Interaction/ActivationHandlers.cs" Link="Interaction/ActivationHandlers.cs" />
+    <Compile Include="../../opencw/Services/PluginStamp.cs" Link="Freshness/PluginStamp.cs" />
+    <Compile Include="../../opencw/Services/GameDataConversion/StageProgress.cs" Link="Freshness/StageProgress.cs" />
+    <Compile Include="../../opencw/Services/Furniture/FurnitureClipDirs.cs" Link="Furniture/FurnitureClipDirs.cs" />
+    <Compile Include="../../opencw/Services/Furniture/FurnitureClips.cs" Link="Furniture/FurnitureClips.cs" />
+    <Compile Include="../../opencw/Services/Furniture/FurnitureSlots.cs" Link="Furniture/FurnitureSlots.cs" />
+    <Compile Include="../../opencw/Services/WorldScale.cs" Link="Furniture/WorldScale.cs" />
+  </ItemGroup>
+  <!-- The Host skeleton test loads the pinned native library, so it must sit next to the test
+       assembly. The file only exists after the Radicle build step in the Papyrus test workflow. -->
+  <ItemGroup Condition="Exists('..\..\opencw\native\radicle\bin')">
+    <None Include="..\..\opencw\native\radicle\bin\radicle.dll" Link="radicle.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\opencw\native\radicle\bin\radicle.dll')" />
+    <None Include="..\..\opencw\native\radicle\bin\libradicle*.so" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

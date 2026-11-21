@@ -1,0 +1,36 @@
+name: Public CI cleanup
+
+on:
+  push:
+    branches: ["ci/**"]
+
+permissions:
+  actions: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Delete superseded and expired runs
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Delete completed ci/* runs that are superseded or over three days old
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          CURRENT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d '3 days ago' +%FT%TZ)
+          declare -A latest=(["$BRANCH"]="$CURRENT")
+          gh api "repos/$REPO/actions/runs?status=completed&per_page=100" --paginate \
+            --jq '.workflow_runs[] | select(.head_branch | startswith("ci/")) | "\(.id) \(.head_branch) \(.head_sha) \(.created_at)"' > runs.txt
+          while read -r id branch sha created; do
+            latest[$branch]=${latest[$branch]:-$sha}
+            [ "$sha" = "${latest[$branch]}" ] && [[ "$created" > "$cutoff" ]] && continue
+            gh api -X DELETE "repos/$REPO/actions/runs/$id"
+            echo "deleted run $id ($branch ${sha:0:8})"
+          done < runs.txt
