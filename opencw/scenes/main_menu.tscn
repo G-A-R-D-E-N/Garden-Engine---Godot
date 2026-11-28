@@ -1,0 +1,238 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/UI/MainMenu.cs" id="1_menu"]
+[ext_resource type="FontFile" path="res://assets/UI/Fonts/RobotoCondensed-Bold.ttf" id="2_bold"]
+[ext_resource type="FontFile" path="res://assets/UI/Fonts/RobotoCondensed-Regular.ttf" id="3_regular"]
+[ext_resource type="Texture2D" path="res://assets/UI/MainMenu/godot_logo.png" id="4_godot"]
+[ext_resource type="Script" path="res://scripts/UI/FoList.cs" id="5_list"]
+[ext_resource type="Script" path="res://scripts/UI/FoPanel.cs" id="6_panel"]
+[ext_resource type="Script" path="res://scripts/UI/MenuAudio.cs" id="7_audio"]
+
+[sub_resource type="Gradient" id="Gradient_left"]
+offsets = PackedFloat32Array(0, 0.55, 1)
+colors = PackedColorArray(0, 0, 0, 0.92, 0, 0, 0, 0.6, 0, 0, 0, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_left"]
+gradient = SubResource("Gradient_left")
+fill_from = Vector2(0, 0)
+fill_to = Vector2(1, 0)
+
+[sub_resource type="Gradient" id="Gradient_bottom"]
+offsets = PackedFloat32Array(0, 0.6, 1)
+colors = PackedColorArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.7)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_bottom"]
+gradient = SubResource("Gradient_bottom")
+fill_from = Vector2(0, 0)
+fill_to = Vector2(0, 1)
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_menu")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.02, 0.03, 0.035, 1)
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="LeftShade" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_left")
+expand_mode = 1
+
+[node name="BottomShade" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_bottom")
+expand_mode = 1
+
+[node name="CreditsShade" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.82)
+
+[node name="Ui" type="Control" parent="."]
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+
+[node name="Lockup" type="HBoxContainer" parent="Ui"]
+layout_mode = 0
+offset_left = 162.0
+offset_top = 90.0
+offset_right = 1042.0
+offset_bottom = 255.0
+theme_override_constants/separation = 36
+
+[node name="FalloutLogo" type="TextureRect" parent="Ui/Lockup"]
+custom_minimum_size = Vector2(460, 165)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="FalloutFallback" type="Label" parent="Ui/Lockup"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 120
+text = "Fallout 4"
+
+[node name="Divider" type="ColorRect" parent="Ui/Lockup"]
+custom_minimum_size = Vector2(2, 150)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(1, 1, 1, 0.35)
+
+[node name="GodotLogo" type="TextureRect" parent="Ui/Lockup"]
+custom_minimum_size = Vector2(340, 137)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("4_godot")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Title" type="Label" parent="Ui"]
+layout_mode = 0
+offset_left = 162.0
+offset_top = 275.0
+offset_right = 1042.0
+offset_bottom = 355.0
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 68
+text = "Fallout 4: Godot"
+
+[node name="MainPanel" type="Control" parent="Ui"]
+layout_mode = 0
+offset_left = 162.0
+offset_top = 430.0
+offset_right = 438.0
+offset_bottom = 817.0
+mouse_filter = 2
+script = ExtResource("6_panel")
+
+[node name="List" type="Control" parent="Ui/MainPanel"]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 18.0
+offset_right = 258.0
+offset_bottom = 369.0
+script = ExtResource("5_list")
+Font = ExtResource("3_regular")
+FontSize = 28
+
+[node name="SecondPanel" type="Control" parent="Ui"]
+visible = false
+layout_mode = 0
+offset_left = 447.0
+offset_top = 459.0
+offset_right = 999.0
+offset_bottom = 846.0
+mouse_filter = 2
+script = ExtResource("6_panel")
+
+[node name="List" type="Control" parent="Ui/SecondPanel"]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 18.0
+offset_right = 534.0
+offset_bottom = 369.0
+script = ExtResource("5_list")
+Font = ExtResource("3_regular")
+FontSize = 28
+
+[node name="Prompt" type="Label" parent="Ui"]
+layout_mode = 0
+offset_left = 460.0
+offset_top = 885.0
+offset_right = 1460.0
+offset_bottom = 935.0
+theme_override_fonts/font = ExtResource("3_regular")
+theme_override_font_sizes/font_size = 32
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Version" type="Label" parent="Ui"]
+visible = false
+layout_mode = 0
+offset_left = 699.0
+offset_top = 856.0
+offset_right = 999.0
+offset_bottom = 884.0
+theme_override_fonts/font = ExtResource("3_regular")
+theme_override_font_sizes/font_size = 15
+horizontal_alignment = 2
+
+[node name="HintBar" type="HBoxContainer" parent="Ui"]
+layout_mode = 0
+offset_left = 460.0
+offset_top = 955.0
+offset_right = 1460.0
+offset_bottom = 1000.0
+theme_override_constants/separation = 48
+alignment = 1
+
+[node name="CreditsClip" type="Control" parent="Ui"]
+visible = false
+clip_contents = true
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 930.0
+mouse_filter = 2
+
+[node name="CreditsText" type="Label" parent="Ui/CreditsClip"]
+layout_mode = 0
+offset_left = 410.0
+offset_top = 930.0
+offset_right = 1510.0
+offset_bottom = 930.0
+theme_override_fonts/font = ExtResource("3_regular")
+theme_override_font_sizes/font_size = 34
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Audio" type="Node" parent="."]
+script = ExtResource("7_audio")

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>OpenCommonwealth</RootNamespace>
+    <AssemblyName>OpenCw.Ui</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'ExportRelease' Or '$(Configuration)' == 'ExportDebug'">
+    <Compile Remove="Gallery\**" />
+  </ItemGroup>
+  <Import Project="..\native\radicle\bin\Radicle.props" Condition="Exists('..\native\radicle\bin\Radicle.props')" />
+  <ItemGroup>
+    <ProjectReference Include="$(RadicleSourceDir)/Radicle/bindings/csharp/Radicle.Interop/Radicle.Interop.csproj" />
+  </ItemGroup>
+  <Target Name="RequireRadicle" BeforeTargets="ResolveProjectReferences" Condition="'$(RadicleSourceDir)' == ''">
+    <Error Text="Radicle is not built. Build native/radicle first so Radicle.props exists." />
+  </Target>
+  <ItemGroup>
+    <InternalsVisibleTo Include="OpenCw.Ui.Tests" />
+  </ItemGroup>
+</Project>
