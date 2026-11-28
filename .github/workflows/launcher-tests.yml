@@ -1,0 +1,76 @@
+name: launcher-tests
+
+on:
+  push:
+    branches: ["ci/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  launcher:
+    name: Onboarding launcher build and tests
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.tool_cache }}/dotnet
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Detect the launcher sources
+        id: src
+        shell: bash
+        run: |
+          # Constraint: the exporter that built this tree comes from main; until its allow-list carries the launcher, the sources are absent and the job passes without running.
+          if [ -f opencw/tools/launcher/OpenCommonwealth.Launcher.csproj ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; echo "::notice::launcher sources are not in this export yet; skipped"; fi
+
+      - name: Build the launcher
+        if: steps.src.outputs.present == 'true'
+        run: dotnet build opencw/tools/launcher/OpenCommonwealth.Launcher.csproj -c Release -r win-x64
+
+      - name: Test the launcher
+        if: steps.src.outputs.present == 'true'
+        run: dotnet test opencw/tools/launcher/tests/Launcher.Tests.csproj -c Release
+
+  report:
+    name: Report to the private commit
+    needs: [launcher]
+    if: always() && !cancelled()
+    runs-on: ubuntu-24.04
+    environment: garden-engine-ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Post the result as a commit status on the private commit
+        env:
+          GH_TOKEN: ${{ secrets.GE_PUBLIC_CI_TOKEN }}
+          NEEDS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          source=$(git log -1 --format=%B | sed -n 's/^Source-Commit: \([0-9a-f]\{40\}\)$/\1/p')
+          [ -n "$source" ] || { echo "::error::no Source-Commit trailer"; exit 1; }
+          failed=$(jq -r 'to_entries | map(select(.value.result != "success" and .value.result != "skipped") | .key) | join(", ")' <<<"$NEEDS")
+          if [ -n "$failed" ]; then state=failure; description="failed: $failed"; else state=success; description="passed"; fi
+          gh api "repos/G-A-R-D-E-N/Garden-Engine/statuses/$source" -f state="$state" \
+            -f context="public-ci/launcher-tests" -f target_url="$RUN_URL" -f description="${description:0:140}" >/dev/null
+          echo "$state posted for launcher-tests ($description)"
