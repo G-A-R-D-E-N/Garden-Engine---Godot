@@ -1,0 +1,35 @@
+using System;
+
+namespace OpenCommonwealth.Services.Interaction;
+
+// Requires: main thread; Update once per player update with the vertical velocity sampled before the move.
+public sealed class PowerArmorLanding
+{
+    private bool _airborne;
+    private double _peak;
+
+    public double? Update(bool onFloor, double velocityY)
+    {
+        if (!onFloor)
+        {
+            _airborne = true;
+            if (double.IsFinite(velocityY)) _peak = Math.Max(_peak, -velocityY);
+            return null;
+        }
+        if (!_airborne) return null;
+        _airborne = false;
+        var speed = _peak;
+        _peak = 0;
+        return speed > 0 ? speed : null;
+    }
+}
+
+public static class PowerArmorStomp
+{
+    public static double Damage(PowerArmorStompSettings settings, double fallSpeed, double distance, bool hostile = true)
+    {
+        if (!hostile || !settings.Enabled || !double.IsFinite(fallSpeed) || !double.IsFinite(distance) || distance < 0) return 0;
+        if (fallSpeed < settings.MinFallSpeed || settings.Radius <= 0 || distance > settings.Radius) return 0;
+        return (fallSpeed - settings.MinFallSpeed) * settings.DamagePerSpeed * (1 - distance / settings.Radius);
+    }
+}
