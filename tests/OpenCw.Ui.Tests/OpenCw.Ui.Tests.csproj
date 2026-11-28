@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <Import Project="..\..\opencw\native\radicle\bin\Radicle.props" Condition="Exists('..\..\opencw\native\radicle\bin\Radicle.props')" />
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../opencw/OpenCw.Ui/OpenCw.Ui.csproj" />
+    <ProjectReference Include="../../opencw/OpenCw.Papyrus/OpenCw.Papyrus.csproj" />
+    <Compile Include="../../opencw/Services/ConditionFunctions.cs" Link="Dialogue/ConditionFunctions.cs" />
+    <Compile Include="../../opencw/Services/WorldScale.cs" Link="Services/WorldScale.cs" Condition="Exists('../../opencw/Services/WorldScale.cs')" />
+    <Compile Include="../../opencw/scripts/Player/MovementSpeeds.cs" Link="Player/MovementSpeeds.cs" Condition="Exists('../../opencw/scripts/Player/MovementSpeeds.cs')" />
+    <Compile Include="../../opencw/scripts/Actors/Packages/PackageConditionValues.cs" Link="Conditions/PackageConditionValues.cs" />
+    <Compile Include="../../opencw/Services/Dialogue/DialogueConditionValues.cs" Link="Conditions/DialogueConditionValues.cs" />
+    <Compile Include="../../opencw/scripts/Actors/NpcFacts.cs" Link="Conditions/NpcFacts.cs" />
+    <Compile Include="../../opencw/scripts/Actors/ActorState.cs" Link="Conditions/ActorState.cs" />
+    <Compile Include="../../opencw/scripts/Actors/ActorStateAccess.cs" Link="Conditions/ActorStateAccess.cs" />
+    <Compile Include="../../opencw/scripts/Actors/LedgerInventoryAccess.cs" Link="Conditions/LedgerInventoryAccess.cs" />
+    <Compile Include="../../opencw/scripts/Actors/ActorStateTarget.cs" Link="Conditions/ActorStateTarget.cs" />
+    <Compile Include="../../opencw/scripts/Actors/NpcCombatBrain.cs" Link="Conditions/NpcCombatBrain.cs" />
+    <Compile Include="../../opencw/scripts/Actors/NpcCombatProfile.cs" Link="Conditions/NpcCombatProfile.cs" />
+    <Compile Include="../../opencw/scripts/Actors/SpawnIdentity.cs" Link="Conditions/SpawnIdentity.cs" />
+    <Compile Include="../../opencw/scripts/Actors/NpcClipRoles.cs" Link="Actors/NpcClipRoles.cs" Condition="Exists('../../opencw/scripts/Actors/NpcClipRoles.cs')" />
+    <Compile Include="../../opencw/Services/Dialogue/DialogueRecords.cs" Link="Dialogue/DialogueRecords.cs" />
+    <Compile Include="../../opencw/Services/Dialogue/DialogueConversation.cs" Link="Dialogue/DialogueConversation.cs" />
+    <Compile Include="../../opencw/Services/Dialogue/DialogueEffects.cs" Link="Dialogue/DialogueEffects.cs" />
+    <Compile Include="../../opencw/Services/Dialogue/SceneRuntimeStarter.cs" Link="Dialogue/SceneRuntimeStarter.cs" />
+    <Compile Include="../../opencw/Services/Dialogue/IndexLoader.cs" Link="Dialogue/IndexLoader.cs" />
+    <Compile Include="../../opencw/Services/Dialogue/LipTrack.cs" Link="Dialogue/LipTrack.cs" />
+    <Compile Include="../../opencw/Services/Dialogue/VoiceTiming.cs" Link="Dialogue/VoiceTiming.cs" />
+    <Compile Include="../../opencw/Services/Dialogue/JawMorph.cs" Link="Dialogue/JawMorph.cs" />
+    <Compile Include="../../opencw/Services/Records/RecordVocabulary.cs" Link="Records/RecordVocabulary.cs" />
+    <Compile Include="../../opencw/Services/Terrain/Srgb.cs" Link="Terrain/Srgb.cs" />
+    <Compile Include="../../opencw/Services/Terrain/TerrainLodConstants.cs" Link="Terrain/TerrainLodConstants.cs" />
+    <Compile Include="../../opencw/Services/Terrain/LodTextureDds.cs" Link="Terrain/LodTextureDds.cs" />
+    <Compile Include="../../opencw/Services/LodDoor/LodTextureDds.Decode.Door.cs" Link="Terrain/LodTextureDds.Decode.Door.cs" />
+    <Compile Include="../../opencw/Services/Terrain/TerrainLodPartial.cs" Link="Terrain/TerrainLodPartial.cs" />
+    <None Include="../../opencw/native/radicle/bin/*radicle.dll;../../opencw/native/radicle/bin/libradicle*.so" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="NpcClipRolesTests.cs" Condition="!Exists('../../opencw/scripts/Actors/NpcClipRoles.cs')" />
+  </ItemGroup>
+</Project>
