@@ -1,0 +1,695 @@
+{
+  "schema": "garden.npc.native-gate",
+  "cell": "GoodneighborTheThirdRail",
+  "plugin": "Fallout4.esm",
+  "derivation": "NPC placements and base-form VMAD read from Fallout4.esm. Called natives are the functions declared native in the official script sources that each attached script body calls, resolved through its extends chain and declared receiver types. Calls that follow only other non-native scripts, array intrinsics and receivers whose type could not be read are listed as unresolved_calls. Not transitive through other scripts. States: bound is registered by a production adapter; player_only is registered but refuses any receiver but the player; unsupported is registered to stop the script naming the missing system; unbound has no registration. State bound_gated: bound in production behind the system.combat row, and reachable only once the reference-attachment keys allow a script on the NPC.",
+  "npcs": [
+    {
+      "editor_id": "Magnolia",
+      "reference": "0x2268b",
+      "base": "0x2268a",
+      "scripts": [],
+      "note": "no VMAD"
+    },
+    {
+      "editor_id": "CompanionMacCready",
+      "reference": "0x2a8a7",
+      "base": "0x2740e",
+      "scripts": [
+        "AttractionObjectActorScript",
+        "WorkshopNPCScript",
+        "TeleportActorScript",
+        "CompanionActorScript",
+        "CompanionPowerArmorKeywordScript",
+        "CompanionCrimeFactionHostilityScript"
+      ],
+      "note": "base-form VMAD"
+    },
+    {
+      "editor_id": "WhitechapelCharlie",
+      "reference": "0x22688",
+      "base": "0x22687",
+      "scripts": [],
+      "note": "no own VMAD; template LCharMrHandy_Standard resolves to LvlMrHandy_Standard whose VMAD attaches MrHandyScript only if the NPC's template Use Script flag is set (flag bit meaning unverified)"
+    },
+    {
+      "editor_id": "Ham",
+      "reference": "0x2268e",
+      "base": "0x2268c",
+      "scripts": [],
+      "note": "no VMAD"
+    },
+    {
+      "editor_id": "GunnerWinlock",
+      "reference": "0x34683",
+      "base": "0x3467f",
+      "scripts": [],
+      "note": "no VMAD; template LvlGunner is a leveled list whose NPC entries carry no scripts"
+    },
+    {
+      "editor_id": "GunnerBarnes",
+      "reference": "0x34684",
+      "base": "0x34680",
+      "scripts": [],
+      "note": "no VMAD; same template"
+    },
+    {
+      "editor_id": "GoodneighborDrifterF08GhoulThirdRail",
+      "reference": "0x1d1f4b",
+      "base": "0x1d1f4a",
+      "scripts": [],
+      "note": "no VMAD; template GoodneighborDrifterTemplate00 has none"
+    },
+    {
+      "editor_id": "GoodneighborDrifterM07ThirdRail",
+      "reference": "0x1d1f49",
+      "base": "0x1d1f48",
+      "scripts": [],
+      "note": "no VMAD; template GoodneighborDrifterTemplate00 has none"
+    },
+    {
+      "editor_id": "GoodneighborDrifterF07ThirdRail",
+      "reference": "0x1d1f47",
+      "base": "0x1d1f46",
+      "scripts": [],
+      "note": "no VMAD; template GoodneighborDrifterTemplate00 has none"
+    },
+    {
+      "editor_id": "GoodneighborDrifterM06GhoulThirdRail",
+      "reference": "0x115ea1",
+      "base": "0x115ea0",
+      "scripts": [],
+      "note": "no VMAD; template GoodneighborDrifterTemplate00 has none"
+    },
+    {
+      "editor_id": "GoodneighborDrifterF05ThirdRail",
+      "reference": "0x115e9f",
+      "base": "0x115e9e",
+      "scripts": [],
+      "note": "no VMAD; template GoodneighborDrifterTemplate00 has none"
+    },
+    {
+      "editor_id": "GoodneighborDrifterM05ThirdRail",
+      "reference": "0x115e9d",
+      "base": "0x115e9b",
+      "scripts": [],
+      "note": "no VMAD; template GoodneighborDrifterTemplate00 has none"
+    }
+  ],
+  "scripts": [
+    {
+      "name": "AttractionObjectActorScript",
+      "events": [
+        "OnInit",
+        "OnLoad",
+        "OnTimer"
+      ],
+      "natives": [
+        "Debug.Trace",
+        "Game.GetFormFromFile",
+        "ObjectReference.GetBaseObject",
+        "ObjectReference.GetCurrentLocation",
+        "ObjectReference.HasKeyword",
+        "ObjectReference.IsDeleted",
+        "ScriptObject.StartTimer"
+      ],
+      "unresolved_calls": [
+        "TempAOStart.sendstoryevent"
+      ],
+      "attached": true
+    },
+    {
+      "name": "WorkshopNPCScript",
+      "events": [
+        "OnActivate",
+        "OnCombatStateChanged",
+        "OnCommandModeGiveCommand",
+        "OnDeath",
+        "OnEnterBleedout",
+        "OnInit",
+        "OnLoad",
+        "OnTimer",
+        "OnWorkshopNPCTransfer"
+      ],
+      "natives": [
+        "Actor.EvaluatePackage",
+        "Actor.IsDead",
+        "Actor.IsDoingFavor",
+        "Actor.SetDoingFavor",
+        "Debug.Trace",
+        "ObjectReference.AddItem",
+        "ObjectReference.AddKeyword",
+        "ObjectReference.ClearFromOldLocations",
+        "ObjectReference.GetLinkedRef",
+        "ObjectReference.GetValue",
+        "ObjectReference.IsCreated",
+        "ObjectReference.IsWithinBuildableArea",
+        "ObjectReference.RemoveKeyword",
+        "ObjectReference.SetLocRefType",
+        "ObjectReference.SetValue",
+        "ScriptObject.CancelTimer",
+        "ScriptObject.RegisterForCustomEvent",
+        "ScriptObject.StartTimer"
+      ],
+      "unresolved_calls": [
+        "CaravanActorAliases.find"
+      ],
+      "attached": true
+    },
+    {
+      "name": "TeleportActorScript",
+      "events": [
+        "OnLoad"
+      ],
+      "natives": [
+        "Actor.AddSpell",
+        "Debug.Trace",
+        "ObjectReference.Is3DLoaded"
+      ],
+      "unresolved_calls": [],
+      "attached": true
+    },
+    {
+      "name": "CompanionActorScript",
+      "events": [
+        "OnCompanionDismiss",
+        "OnDeath",
+        "OnInit",
+        "OnTimer",
+        "OnTimerGameTime"
+      ],
+      "natives": [
+        "Actor.AddPerk",
+        "Actor.EvaluatePackage",
+        "Actor.IsDead",
+        "Actor.IsInFaction",
+        "Debug.Trace",
+        "Debug.TraceStack",
+        "FormList.GetAt",
+        "FormList.GetSize",
+        "Game.Error",
+        "Game.GetPlayer",
+        "Game.GetRealHoursPassed",
+        "Game.Warning",
+        "GlobalVariable.GetValue",
+        "Math.abs",
+        "Message.Show",
+        "ObjectReference.AddItem",
+        "ObjectReference.GetDistance",
+        "ObjectReference.GetValue",
+        "ObjectReference.ModValue",
+        "ObjectReference.Say",
+        "ObjectReference.SayCustom",
+        "ObjectReference.SetValue",
+        "Scene.Start",
+        "ScriptObject.CancelTimerGameTime",
+        "ScriptObject.RegisterForCustomEvent",
+        "ScriptObject.StartTimer",
+        "ScriptObject.StartTimerGameTime",
+        "ScriptObject.UnregisterForCustomEvent",
+        "Utility.GetCurrentGameTime",
+        "Utility.RandomFloat"
+      ],
+      "unresolved_calls": [
+        "Achievements.setstage",
+        "affinityscenetoplay",
+        "getmodaffinityvalue",
+        "QueuedThresholdData_Array.add",
+        "QueuedThresholdData_Array.find",
+        "QueuedThresholdData_Array.findstruct",
+        "QueuedThresholdData_Array.remove",
+        "show",
+        "ThresholdData_Array.findstruct",
+        "TraitPreference_Array.findstruct",
+        "unlockinfationperk"
+      ],
+      "attached": true
+    },
+    {
+      "name": "CompanionPowerArmorKeywordScript",
+      "events": [
+        "OnItemEquipped",
+        "OnItemUnequipped"
+      ],
+      "natives": [
+        "Debug.Trace",
+        "Form.HasKeyword",
+        "ObjectReference.AddKeyword",
+        "ObjectReference.RemoveKeyword"
+      ],
+      "unresolved_calls": [],
+      "attached": true
+    },
+    {
+      "name": "CompanionCrimeFactionHostilityScript",
+      "events": [
+        "OnCombatStateChanged",
+        "OnTimer"
+      ],
+      "natives": [
+        "Actor.GetAllCombatTargets",
+        "Actor.GetCrimeFaction",
+        "Actor.IsInCombat",
+        "Debug.Trace",
+        "Faction.IsFactionInCrimeGroup",
+        "Faction.IsPlayerEnemy",
+        "Faction.SetPlayerEnemy",
+        "Game.GetGameSettingFloat",
+        "ScriptObject.StartTimer"
+      ],
+      "unresolved_calls": [
+        "].getcrimefaction"
+      ],
+      "attached": true
+    },
+    {
+      "name": "MrHandyScript",
+      "events": [
+        "OnCripple"
+      ],
+      "natives": [
+        "Debug.Trace",
+        "ObjectReference.SetAnimationVariableInt"
+      ],
+      "unresolved_calls": [],
+      "attached": false
+    }
+  ],
+  "natives": [
+    {
+      "native": "Actor.AddPerk",
+      "state": "player_only",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "Actor.AddSpell",
+      "state": "unsupported",
+      "scripts": [
+        "TeleportActorScript"
+      ]
+    },
+    {
+      "native": "Actor.EvaluatePackage",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript",
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "Actor.GetAllCombatTargets",
+      "state": "unsupported",
+      "scripts": [
+        "CompanionCrimeFactionHostilityScript"
+      ]
+    },
+    {
+      "native": "Actor.GetCrimeFaction",
+      "state": "bound",
+      "scripts": [
+        "CompanionCrimeFactionHostilityScript"
+      ]
+    },
+    {
+      "native": "Actor.IsDead",
+      "state": "bound_gated",
+      "scripts": [
+        "CompanionActorScript",
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "Actor.IsDoingFavor",
+      "state": "unsupported",
+      "scripts": [
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "Actor.IsInCombat",
+      "state": "unbound",
+      "scripts": [
+        "CompanionCrimeFactionHostilityScript"
+      ]
+    },
+    {
+      "native": "Actor.IsInFaction",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "Actor.SetDoingFavor",
+      "state": "unsupported",
+      "scripts": [
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "Debug.Trace",
+      "state": "bound",
+      "scripts": [
+        "AttractionObjectActorScript",
+        "CompanionActorScript",
+        "CompanionCrimeFactionHostilityScript",
+        "CompanionPowerArmorKeywordScript",
+        "MrHandyScript",
+        "TeleportActorScript",
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "Debug.TraceStack",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "Faction.IsFactionInCrimeGroup",
+      "state": "unbound",
+      "scripts": [
+        "CompanionCrimeFactionHostilityScript"
+      ]
+    },
+    {
+      "native": "Faction.IsPlayerEnemy",
+      "state": "unbound",
+      "scripts": [
+        "CompanionCrimeFactionHostilityScript"
+      ]
+    },
+    {
+      "native": "Faction.SetPlayerEnemy",
+      "state": "unbound",
+      "scripts": [
+        "CompanionCrimeFactionHostilityScript"
+      ]
+    },
+    {
+      "native": "Form.HasKeyword",
+      "state": "bound",
+      "scripts": [
+        "CompanionPowerArmorKeywordScript"
+      ]
+    },
+    {
+      "native": "FormList.GetAt",
+      "state": "unbound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "FormList.GetSize",
+      "state": "unbound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "Game.Error",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "Game.GetFormFromFile",
+      "state": "bound",
+      "scripts": [
+        "AttractionObjectActorScript"
+      ]
+    },
+    {
+      "native": "Game.GetGameSettingFloat",
+      "state": "unbound",
+      "scripts": [
+        "CompanionCrimeFactionHostilityScript"
+      ]
+    },
+    {
+      "native": "Game.GetPlayer",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "Game.GetRealHoursPassed",
+      "state": "unbound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "Game.Warning",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "GlobalVariable.GetValue",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "Math.abs",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "Message.Show",
+      "state": "ui_bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.AddItem",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript",
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.AddKeyword",
+      "state": "bound",
+      "scripts": [
+        "CompanionPowerArmorKeywordScript",
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.ClearFromOldLocations",
+      "state": "unsupported",
+      "scripts": [
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.GetBaseObject",
+      "state": "unbound",
+      "scripts": [
+        "AttractionObjectActorScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.GetCurrentLocation",
+      "state": "unbound",
+      "scripts": [
+        "AttractionObjectActorScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.GetDistance",
+      "state": "unbound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.GetLinkedRef",
+      "state": "bound",
+      "scripts": [
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.GetValue",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript",
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.HasKeyword",
+      "state": "bound",
+      "scripts": [
+        "AttractionObjectActorScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.Is3DLoaded",
+      "state": "unbound",
+      "scripts": [
+        "TeleportActorScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.IsCreated",
+      "state": "unbound",
+      "scripts": [
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.IsDeleted",
+      "state": "unbound",
+      "scripts": [
+        "AttractionObjectActorScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.IsWithinBuildableArea",
+      "state": "unsupported",
+      "scripts": [
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.ModValue",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.RemoveKeyword",
+      "state": "bound",
+      "scripts": [
+        "CompanionPowerArmorKeywordScript",
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.Say",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.SayCustom",
+      "state": "unsupported",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.SetAnimationVariableInt",
+      "state": "unbound",
+      "scripts": [
+        "MrHandyScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.SetLocRefType",
+      "state": "unsupported",
+      "scripts": [
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "ObjectReference.SetValue",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript",
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "Scene.Start",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "ScriptObject.CancelTimer",
+      "state": "bound",
+      "scripts": [
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "ScriptObject.CancelTimerGameTime",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "ScriptObject.RegisterForCustomEvent",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript",
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "ScriptObject.StartTimer",
+      "state": "bound",
+      "scripts": [
+        "AttractionObjectActorScript",
+        "CompanionActorScript",
+        "CompanionCrimeFactionHostilityScript",
+        "WorkshopNPCScript"
+      ]
+    },
+    {
+      "native": "ScriptObject.StartTimerGameTime",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "ScriptObject.UnregisterForCustomEvent",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "Utility.GetCurrentGameTime",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    },
+    {
+      "native": "Utility.RandomFloat",
+      "state": "bound",
+      "scripts": [
+        "CompanionActorScript"
+      ]
+    }
+  ],
+  "attachment_gate": [
+    "vm.session.cell_lifecycle",
+    "vmad.reference_compiled_attachments",
+    "vmad.reference_source",
+    "owner.engine_identity"
+  ]
+}
