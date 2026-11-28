@@ -1,0 +1,101 @@
+name: devsync-tests
+
+on:
+  push:
+    branches: ["ci/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  detect:
+    name: Detect the dev sync sources
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      present: ${{ steps.src.outputs.present }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Detect the dev sync sources
+        id: src
+        shell: bash
+        run: |
+          if [ ! -f tests/DevSync.Tests/DevSync.Tests.csproj ]; then
+            echo "::error::tests/DevSync.Tests/DevSync.Tests.csproj is missing from this export, so the dev sync tests cannot run"
+            exit 1
+          fi
+          echo "present=true" >> "$GITHUB_OUTPUT"
+
+  devsync:
+    name: Dev sync engine tests (${{ matrix.os }})
+    needs: [detect]
+    if: needs.detect.outputs.present == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.tool_cache }}/dotnet
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Dev sync tests
+        run: dotnet test tests/DevSync.Tests -c Debug
+
+  report:
+    name: Report to the private commit
+    needs: [detect, devsync]
+    if: always() && !cancelled()
+    runs-on: ubuntu-24.04
+    environment: garden-engine-ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Post the result as a commit status on the private commit
+        env:
+          GH_TOKEN: ${{ secrets.GE_PUBLIC_CI_TOKEN }}
+          DETECT_RESULT: ${{ needs.detect.result }}
+          DEVSYNC_RESULT: ${{ needs.devsync.result }}
+          PRESENT: ${{ needs.detect.outputs.present }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          source=$(git log -1 --format=%B | sed -n 's/^Source-Commit: \([0-9a-f]\{40\}\)$/\1/p')
+          [ -n "$source" ] || { echo "::error::no Source-Commit trailer"; exit 1; }
+          if [ "$DETECT_RESULT" != "success" ]; then
+            state=failure; description="failed: detect"
+          elif [ "$DEVSYNC_RESULT" != "success" ]; then
+            state=failure; description="failed: devsync ($DEVSYNC_RESULT)"
+          elif [ "$PRESENT" != "true" ]; then
+            state=failure; description="dev sync sources missing: the tests did not run"
+          else
+            state=success; description="passed"
+          fi
+          gh api "repos/G-A-R-D-E-N/Garden-Engine/statuses/$source" -f state="$state" \
+            -f context="public-ci/devsync-tests" -f target_url="$RUN_URL" -f description="${description:0:140}" >/dev/null
+          echo "$state posted for devsync-tests ($description)"
