@@ -1,0 +1,90 @@
+name: devsync-tests
+
+on:
+  push:
+    branches: ["ci/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  devsync:
+    name: Dev sync engine tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Detect the devsync sources
+        shell: bash
+        run: |
+          missing=()
+          for path in tests/DevSync.Tests/DevSync.Tests.csproj tools/devsync/sync_local.py tools/devsync/test_sync_local.py tools/devsync/gui/GardenDevLauncher.csproj; do
+            [ -f "$path" ] || missing+=("$path")
+          done
+          if [ ${#missing[@]} -ne 0 ]; then echo "::error::the devsync sources are missing from this export: ${missing[*]}"; exit 1; fi
+
+      - name: Dev sync tests
+        run: dotnet test tests/DevSync.Tests -c Debug
+
+      - name: Local sync tool Python tests
+        if: runner.os == 'Linux'
+        run: python3 -m unittest discover -s tools/devsync -p "test_*.py" -v
+
+      - name: Build the launcher
+        if: runner.os == 'Windows'
+        run: dotnet build tools/devsync/gui/GardenDevLauncher.csproj -c Release
+
+      - name: Local sync tool Python tests and launcher work preservation
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:GARDEN_DEV_LAUNCHER = (Resolve-Path 'tools/devsync/gui/bin/Release/net10.0-windows/win-x64/GardenDevLauncher.exe').Path
+          python -m unittest discover -s tools/devsync -p "test_*.py" -v
+
+  report:
+    name: Report to the private commit
+    needs: [devsync]
+    if: always() && !cancelled()
+    runs-on: ubuntu-24.04
+    environment: garden-engine-ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Post the result as a commit status on the private commit
+        env:
+          GH_TOKEN: ${{ secrets.GE_PUBLIC_CI_TOKEN }}
+          NEEDS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          source=$(git log -1 --format=%B | sed -n 's/^Source-Commit: \([0-9a-f]\{40\}\)$/\1/p')
+          [ -n "$source" ] || { echo "::error::no Source-Commit trailer"; exit 1; }
+          failed=$(jq -r 'to_entries | map(select(.value.result != "success" and .value.result != "skipped") | .key) | join(", ")' <<<"$NEEDS")
+          if [ -n "$failed" ]; then state=failure; description="failed: $failed"; else state=success; description="passed"; fi
+          gh api "repos/G-A-R-D-E-N/Garden-Engine/statuses/$source" -f state="$state" \
+            -f context="public-ci/devsync-tests" -f target_url="$RUN_URL" -f description="${description:0:140}" >/dev/null
+          echo "$state posted for devsync-tests ($description)"
